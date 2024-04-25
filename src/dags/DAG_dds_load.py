@@ -270,7 +270,7 @@ def load_paste_data_deliveries():
 create_all_tables_dds = PostgresOperator(
     task_id="create_dds_tables",
     postgres_conn_id='PG_WAREHOUSE_CONNECTION',
-    sql="./create_dds_tables.sql",
+    sql="./sql_scripts/create_dds_tables.sql",
 )
 
 default_args = {
@@ -283,7 +283,7 @@ default_args = {
 }
 
 with DAG(
-        '2_dds_postgres',
+        'load_dds_to_postgres',
         default_args=default_args,
         schedule_interval='0/15 * * * *',
         start_date=datetime(2024, 4, 22),
