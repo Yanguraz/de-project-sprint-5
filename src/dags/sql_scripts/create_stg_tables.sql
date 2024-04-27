@@ -34,4 +34,15 @@ CREATE TABLE IF NOT EXISTS stg.settings (
     CONSTRAINT settings_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS stg.last_offset (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL UNIQUE,
+    offset_param INT NOT NULL DEFAULT 0
+);
+
+INSERT INTO stg.last_offset (table_name) VALUES 
+    ('restaurants'),
+    ('couriers'),
+    ('deliveries')
+ON CONFLICT (table_name) DO NOTHING;
 

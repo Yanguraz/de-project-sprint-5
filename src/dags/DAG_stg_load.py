@@ -49,19 +49,27 @@ pg_connection = PostgresHook.get_connection('PG_WAREHOUSE_CONNECTION')
 
 # Инициализируем соединение
 # Подключаемся к Postgres
-conn_1 = psycopg2.connect(
-    f"""
-    host='{pg_connection.host}'
-    port='{pg_connection.port}'
-    dbname='{pg_connection.schema}' 
-    user='{pg_connection.login}' 
-    password='{pg_connection.password}'
-    """
-    )   
+pg_connection = PostgresHook('PG_WAREHOUSE_CONNECTION')
+conn_1 = pg_connection.get_conn()
+
+def get_last_offset(table_name):
+    cur = conn_1.cursor()
+    cur.execute(f"SELECT offset_param FROM stg.last_offset WHERE table_name = '{table_name}'")
+    row = cur.fetchone()
+    cur.close()
+    return row[0] if row else 0
+
+def update_last_offset(table_name, offset_value):
+    cur = conn_1.cursor()
+    cur.execute(f"INSERT INTO stg.last_offset (table_name, offset_param) VALUES ('{table_name}', {offset_value}) ON CONFLICT (table_name) DO UPDATE SET offset_param = EXCLUDED.offset_param")
+    conn_1.commit()
+    cur.close()
 
 # restaurants
 def load_insert_data_restaurants():
-    # Получаем JSON ресторанов
+    offset = get_last_offset('restaurants')
+    InputParams.params['offset'] = offset
+
     r = requests.get(
         url = url_restaurants, 
         params = InputParams.params, 
@@ -74,29 +82,36 @@ def load_insert_data_restaurants():
         for obj in json_record:
             temp_list_restaurants.append(obj)
         InputParams.params['offset'] += 50
-    temp_list_restaurants = json.dumps(temp_list_restaurants)
+    if temp_list_restaurants:
+        temp_list_restaurants = json.dumps(temp_list_restaurants)
 
-    fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    current_table = 'restaurants'
-    
-    # Загрузка в restaurants
-    cur_1 = conn_1.cursor()                 
-    postgres_insert_query = """ 
-        INSERT INTO stg.restaurants (object_value,update_ts) 
-        VALUES ('{}', '{}');""".format(temp_list_restaurants,fetching_time)
-    
-    # Загрузка в settings
-    postgres_insert_query_settings = """ 
-        INSERT INTO stg.settings (workflow_key, workflow_settings) 
-        VALUES ('{}','{}');""".format(fetching_time,current_table)                  
-    cur_1.execute(postgres_insert_query)    
-    cur_1.execute(postgres_insert_query_settings)  
-    
-    conn_1.commit()
-    cur_1.close()
+        fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_table = 'restaurants'
+        
+        # Загрузка в restaurants
+        cur_1 = conn_1.cursor()                 
+        postgres_insert_query = """ 
+            INSERT INTO stg.restaurants (object_value,update_ts) 
+            VALUES ('{}', '{}');""".format(temp_list_restaurants,fetching_time)
+        
+        # Загрузка в settings
+        postgres_insert_query_settings = """ 
+            INSERT INTO stg.settings (workflow_key, workflow_settings) 
+            VALUES ('{}','{}');""".format(fetching_time,current_table)                  
+        cur_1.execute(postgres_insert_query)    
+        cur_1.execute(postgres_insert_query_settings)  
+        
+        # Апдейтим оффсет
+        update_last_offset('restaurants', InputParams.params['offset'])
+        
+        conn_1.commit()
+        cur_1.close()
 
 # couriers
 def load_insert_data_couriers():
+    offset = get_last_offset('couriers')
+    InputParams.params['offset'] = offset
+    
     r = requests.get(
         url = url_couriers, 
         params = InputParams.params, 
@@ -109,29 +124,36 @@ def load_insert_data_couriers():
         for obj in json_record:
             temp_list_couriers.append(obj)
         InputParams.params['offset'] += 50
-    temp_list_couriers = json.dumps(temp_list_couriers)
+    if temp_list_couriers:
+        temp_list_couriers = json.dumps(temp_list_couriers)
 
-    fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    current_table = 'couriers'
-    
-    # Загрузка в couriers
-    cur_1 = conn_1.cursor()                 
-    postgres_insert_query = """ 
-        INSERT INTO stg.couriers (object_value,update_ts) 
-        VALUES ('{}', '{}');""".format(temp_list_couriers,fetching_time)
-    
-    # Загрузка в settings
-    postgres_insert_query_settings = """ 
-        INSERT INTO stg.settings (workflow_key, workflow_settings) 
-        VALUES ('{}','{}');""".format(fetching_time,current_table)                  
-    cur_1.execute(postgres_insert_query)    
-    cur_1.execute(postgres_insert_query_settings)  
-    
-    conn_1.commit()
-    cur_1.close()
+        fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_table = 'couriers'
+        
+        # Загрузка в couriers
+        cur_1 = conn_1.cursor()                 
+        postgres_insert_query = """ 
+            INSERT INTO stg.couriers (object_value,update_ts) 
+            VALUES ('{}', '{}');""".format(temp_list_couriers,fetching_time)
+        
+        # Загрузка в settings
+        postgres_insert_query_settings = """ 
+            INSERT INTO stg.settings (workflow_key, workflow_settings) 
+            VALUES ('{}','{}');""".format(fetching_time,current_table)                  
+        cur_1.execute(postgres_insert_query)    
+        cur_1.execute(postgres_insert_query_settings)  
+        
+        # Апдейтим оффсет
+        update_last_offset('couriers', InputParams.params['offset'])
+        
+        conn_1.commit()
+        cur_1.close()
 
 # deliveries
 def load_insert_data_deliveries():
+    offset = get_last_offset('deliveries')
+    InputParams.params['offset'] = offset
+    
     r = requests.get(
         url = url_deliveries, 
         params = InputParams.params, 
@@ -144,26 +166,30 @@ def load_insert_data_deliveries():
         for obj in json_record:
             temp_list_deliveries.append(obj)
         InputParams.params['offset'] += 50
-    temp_list_deliveries = json.dumps(temp_list_deliveries)
+    if temp_list_deliveries:
+        temp_list_deliveries = json.dumps(temp_list_deliveries)
 
-    fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    current_table = 'deliveries'
-    
-    # Загрузка deliveries
-    cur_1 = conn_1.cursor()                 
-    postgres_insert_query = """ 
-        INSERT INTO stg.deliveries (object_value,update_ts) 
-        VALUES ('{}', '{}');""".format(temp_list_deliveries,fetching_time)
-    
-    # Загрузка в settings
-    postgres_insert_query_settings = """ 
-        INSERT INTO stg.settings (workflow_key, workflow_settings) 
-        VALUES ('{}','{}');""".format(fetching_time,current_table)                  
-    cur_1.execute(postgres_insert_query)    
-    cur_1.execute(postgres_insert_query_settings)  
-    
-    conn_1.commit()
-    cur_1.close()
+        fetching_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        current_table = 'deliveries'
+        
+        # Загрузка deliveries
+        cur_1 = conn_1.cursor()                 
+        postgres_insert_query = """ 
+            INSERT INTO stg.deliveries (object_value,update_ts) 
+            VALUES ('{}', '{}');""".format(temp_list_deliveries,fetching_time)
+        
+        # Загрузка в settings
+        postgres_insert_query_settings = """ 
+            INSERT INTO stg.settings (workflow_key, workflow_settings) 
+            VALUES ('{}','{}');""".format(fetching_time,current_table)                  
+        cur_1.execute(postgres_insert_query)    
+        cur_1.execute(postgres_insert_query_settings)  
+        
+        # Апдейтим оффсет
+        update_last_offset('deliveries', InputParams.params['offset'])
+        
+        conn_1.commit()
+        cur_1.close()
 
 creates_stg_tables = PostgresOperator(
     task_id="creates_stg_tables",
@@ -198,6 +224,7 @@ with DAG(
     task4 = DummyOperator(task_id="end")
     
     task1 >> creates_stg_tables >> load_tables >> task4
+
 
 
 

@@ -10,18 +10,8 @@ from airflow.operators.postgres_operator import PostgresOperator
 from airflow.utils.task_group import TaskGroup
 
 # Настройки PostgreSQL
-pg_connection = PostgresHook.get_connection('PG_WAREHOUSE_CONNECTION')
-
-# Инициализация подключения к базе данных PostgreSQL
-conn_1 = psycopg2.connect(
-    f"""
-    host='{pg_connection.host}'
-    port='{pg_connection.port}'
-    dbname='{pg_connection.schema}' 
-    user='{pg_connection.login}' 
-    password='{pg_connection.password}'
-    """
-    )   
+pg_connection = PostgresHook('PG_WAREHOUSE_CONNECTION')
+conn_1 = pg_connection.get_conn() 
 
 # restaurants
 def load_paste_data_restaurants():
@@ -293,14 +283,13 @@ with DAG(
 
     # Создание логики DAG (последовательность/порядок)
     task1 = DummyOperator(task_id="start")
-    with TaskGroup("load_dds_tables") as load_tables:
-        task21 = PythonOperator(task_id="restaurants", python_callable=load_paste_data_restaurants, dag=dag)
-        task22 = PythonOperator(task_id="couriers", python_callable=load_paste_data_couriers, dag=dag)
-        task23 = PythonOperator(task_id="timestamps", python_callable=load_paste_data_timestamps, dag=dag)
-        task24 = PythonOperator(task_id="orders", python_callable=load_paste_data_orders, dag=dag)
-        task25 = PythonOperator(task_id="deliveries", python_callable=load_paste_data_deliveries, dag=dag)
+    task21 = PythonOperator(task_id="restaurants", python_callable=load_paste_data_restaurants, dag=dag)
+    task22 = PythonOperator(task_id="couriers", python_callable=load_paste_data_couriers, dag=dag)
+    task23 = PythonOperator(task_id="timestamps", python_callable=load_paste_data_timestamps, dag=dag)
+    task24 = PythonOperator(task_id="orders", python_callable=load_paste_data_orders, dag=dag)
+    task25 = PythonOperator(task_id="deliveries", python_callable=load_paste_data_deliveries, dag=dag)
     task4 = DummyOperator(task_id="end")
     
-    task1 >> create_all_tables_dds >> load_tables >> task4
+    task1 >> create_all_tables_dds >> task21 >> task22 >> task23 >> task24 >> task25 >> task4
 
 

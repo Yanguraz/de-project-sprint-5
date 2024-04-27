@@ -20,18 +20,8 @@ from airflow.operators.postgres_operator import PostgresOperator
 from airflow.utils.task_group import TaskGroup
 
 # Настройки PostgreSQL
-pg_connection = PostgresHook.get_connection('PG_WAREHOUSE_CONNECTION')
-
-# Инициализация подключения к базе данных PostgreSQL
-conn_1 = psycopg2.connect(
-    f"""
-    host='{pg_connection.host}'
-    port='{pg_connection.port}'
-    dbname='{pg_connection.schema}' 
-    user='{pg_connection.login}' 
-    password='{pg_connection.password}'
-    """
-    ) 
+pg_connection = PostgresHook('PG_WAREHOUSE_CONNECTION')
+conn_1 = pg_connection.get_conn() 
 
 
 # courier_ledger TABLE
